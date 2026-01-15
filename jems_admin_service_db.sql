@@ -14,7 +14,9 @@
 CREATE DATABASE jems_admin;
 
 -- Connect to the database
-\c jems_admin;
+-- Note: \c is a psql meta-command. If running in a different SQL client, 
+-- you may need to connect to the database manually before running the rest of this script.
+-- \c jems_admin;
 
 -- ============================================
 -- ENUM Types
@@ -48,7 +50,7 @@ CREATE TABLE "Department" (
     "location_id" TEXT,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "Department_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "Tenant"("tenant_id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
@@ -63,7 +65,7 @@ CREATE TABLE "Role" (
     "created_by" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_by" TEXT,
-    "updated_at" TIMESTAMP(3) NOT NULL,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "Role_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "Tenant"("tenant_id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
@@ -74,7 +76,7 @@ CREATE TABLE "Employee" (
     "employee_name" TEXT NOT NULL,
     "employee_code" TEXT,
     "department_id" INTEGER NOT NULL,
-    "role_id" TEXT NOT NULL,
+    "role_id" INTEGER NOT NULL,
     "email" TEXT,
     "mobile_number" TEXT NOT NULL,
     "date_of_joining" TEXT NOT NULL,
@@ -88,7 +90,8 @@ CREATE TABLE "Employee" (
     "updated_by" TEXT,
     "updated_at" TIMESTAMP(3),
     CONSTRAINT "Employee_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "Tenant"("tenant_id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT "Employee_department_id_fkey" FOREIGN KEY ("department_id") REFERENCES "Department"("department_id") ON DELETE RESTRICT ON UPDATE CASCADE
+    CONSTRAINT "Employee_department_id_fkey" FOREIGN KEY ("department_id") REFERENCES "Department"("department_id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "Employee_role_id_fkey" FOREIGN KEY ("role_id") REFERENCES "Role"("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- Customer Table
@@ -137,6 +140,7 @@ CREATE INDEX "Department_tenant_id_idx" ON "Department"("tenant_id");
 CREATE INDEX "Role_tenant_id_idx" ON "Role"("tenant_id");
 CREATE INDEX "Employee_tenant_id_idx" ON "Employee"("tenant_id");
 CREATE INDEX "Employee_department_id_idx" ON "Employee"("department_id");
+CREATE INDEX "Employee_role_id_idx" ON "Employee"("role_id");
 CREATE INDEX "Vendor_tenantId_idx" ON "Vendor"("tenantId");
 
 -- ============================================
@@ -175,13 +179,14 @@ INSERT INTO "Role" ("tenant_id", "role_code", "role_name", "role_description", "
 (2, 'ROLE002', 'Sales Executive', 'Sales executive role', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- Insert Employee data
+-- Note: role_id now references Role.id (INTEGER) instead of role_code (TEXT)
 INSERT INTO "Employee" ("tenant_id", "employee_name", "employee_code", "department_id", "role_id", "email", "mobile_number", "date_of_joining", "address", "is_active", "created_at") VALUES
-(1, 'John Doe', 'EMP001', 1, 'ROLE001', 'john.doe@jems.com', '9876543210', '2024-01-15', '123 Main Street, City', true, CURRENT_TIMESTAMP),
-(1, 'Jane Smith', 'EMP002', 2, 'ROLE002', 'jane.smith@jems.com', '9876543211', '2024-02-01', '456 Oak Avenue, City', true, CURRENT_TIMESTAMP),
-(1, 'Bob Johnson', 'EMP003', 1, 'ROLE003', 'bob.johnson@jems.com', '9876543212', '2024-03-10', '789 Pine Road, City', true, CURRENT_TIMESTAMP),
-(1, 'Alice Williams', 'EMP004', 3, 'ROLE006', 'alice.williams@jems.com', '9876543213', '2024-04-05', '321 Elm Street, City', true, CURRENT_TIMESTAMP),
-(1, 'Charlie Brown', 'EMP005', 2, 'ROLE005', 'charlie.brown@jems.com', '9876543214', '2024-05-12', '654 Maple Drive, City', true, CURRENT_TIMESTAMP),
-(1, 'Diana Prince', 'EMP006', 4, 'ROLE004', 'diana.prince@jems.com', '9876543215', '2024-06-20', '987 Cedar Lane, City', true, CURRENT_TIMESTAMP);
+(1, 'John Doe', 'EMP001', 1, 1, 'john.doe@jems.com', '9876543210', '2024-01-15', '123 Main Street, City', true, CURRENT_TIMESTAMP),
+(1, 'Jane Smith', 'EMP002', 2, 2, 'jane.smith@jems.com', '9876543211', '2024-02-01', '456 Oak Avenue, City', true, CURRENT_TIMESTAMP),
+(1, 'Bob Johnson', 'EMP003', 1, 3, 'bob.johnson@jems.com', '9876543212', '2024-03-10', '789 Pine Road, City', true, CURRENT_TIMESTAMP),
+(1, 'Alice Williams', 'EMP004', 3, 6, 'alice.williams@jems.com', '9876543213', '2024-04-05', '321 Elm Street, City', true, CURRENT_TIMESTAMP),
+(1, 'Charlie Brown', 'EMP005', 2, 5, 'charlie.brown@jems.com', '9876543214', '2024-05-12', '654 Maple Drive, City', true, CURRENT_TIMESTAMP),
+(1, 'Diana Prince', 'EMP006', 4, 4, 'diana.prince@jems.com', '9876543215', '2024-06-20', '987 Cedar Lane, City', true, CURRENT_TIMESTAMP);
 
 -- Insert Customer data
 INSERT INTO "Customer" ("customer_code", "customer_name", "mobilenumber", "email_id", "address", "status", "created_at", "updated_at") VALUES

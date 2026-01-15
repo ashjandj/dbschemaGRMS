@@ -14,7 +14,9 @@
 CREATE DATABASE jems_manufacturing;
 
 -- Connect to the database
-\c jems_manufacturing;
+-- Note: \c is a psql meta-command. If running in a different SQL client, 
+-- you may need to connect to the database manually before running the rest of this script.
+-- \c jems_manufacturing;
 
 -- ============================================
 -- ENUM Types
@@ -321,7 +323,7 @@ CREATE TABLE "AlloyComponent" (
 -- ManufacturingBrand Table
 CREATE TABLE "ManufacturingBrand" (
     "id" SERIAL PRIMARY KEY,
-    "tenant_id" VARCHAR(255),
+    "tenant_id" INTEGER,
     "brand_code" TEXT NOT NULL UNIQUE,
     "brand_name" TEXT NOT NULL,
     "description" TEXT,
@@ -330,7 +332,7 @@ CREATE TABLE "ManufacturingBrand" (
     "created_by" TEXT,
     "updated_by" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ProductMaster Table
@@ -418,6 +420,9 @@ CREATE TABLE "orderType" (
 );
 
 -- OrderHeading Table
+-- NOTE: customer_id references Customer table in jems_admin database (cross-database reference)
+-- PostgreSQL does not support foreign keys across databases. This relationship must be
+-- enforced at the application level or through database federation/views.
 CREATE TABLE "OrderHeading" (
     "order_id" SERIAL PRIMARY KEY,
     "order_type" TEXT NOT NULL,
@@ -428,7 +433,7 @@ CREATE TABLE "OrderHeading" (
     "total_order_value" DOUBLE PRECISION,
     "tenant_id" INTEGER NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- OrderLineItems Table
@@ -441,15 +446,18 @@ CREATE TABLE "OrderLineItems" (
     "item_name" TEXT NOT NULL,
     "sku_reference" TEXT,
     "quantity" INTEGER NOT NULL,
-    "making_charge" DECIMAL NOT NULL,
-    "material_cost" DECIMAL NOT NULL,
-    "total_cost" DECIMAL NOT NULL,
+    "making_charge" DECIMAL(12,2) NOT NULL,
+    "material_cost" DECIMAL(12,2) NOT NULL,
+    "total_cost" DECIMAL(12,2) NOT NULL,
     "remarks" TEXT,
     CONSTRAINT "OrderLineItems_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "OrderHeading"("order_id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "OrderLineItems_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "ItemCategory"("category_id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- StockAdjustment Table
+-- NOTE: created_by references Employee table in jems_admin database (cross-database reference)
+-- PostgreSQL does not support foreign keys across databases. This relationship must be
+-- enforced at the application level or through database federation/views.
 CREATE TABLE "StockAdjustment" (
     "adjustment_id" SERIAL PRIMARY KEY,
     "tenant_id" INTEGER NOT NULL,
@@ -458,7 +466,7 @@ CREATE TABLE "StockAdjustment" (
     "remarks" TEXT,
     "created_by" INTEGER,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- AlloyCreation Table
@@ -482,6 +490,10 @@ CREATE TABLE "AlloyCreation" (
 );
 
 -- StockEntry Table
+-- NOTE: vendor_id references Vendor table in jems_admin database (cross-database reference)
+-- NOTE: created_by references Employee table in jems_admin database (cross-database reference)
+-- PostgreSQL does not support foreign keys across databases. These relationships must be
+-- enforced at the application level or through database federation/views.
 CREATE TABLE "StockEntry" (
     "stock_entry_id" SERIAL PRIMARY KEY,
     "tenant_id" INTEGER NOT NULL,
@@ -744,12 +756,12 @@ INSERT INTO "AlloysRecipe" ("tenant_id", "recipe_name", "recipe_code", "colour_i
 
 -- Insert ManufacturingBrand data
 INSERT INTO "ManufacturingBrand" ("tenant_id", "brand_code", "brand_name", "description", "status", "createdAt", "updatedAt") VALUES
-('1', 'BRAND001', 'Premium Collection', 'Premium jewelry brand', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-('1', 'BRAND002', 'Classic Collection', 'Classic jewelry brand', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-('1', 'BRAND003', 'Royal Collection', 'Royal jewelry brand', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-('1', 'BRAND004', 'Modern Collection', 'Modern jewelry brand', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-('1', 'BRAND005', 'Heritage Collection', 'Heritage jewelry brand', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-('1', 'BRAND006', 'Exclusive Collection', 'Exclusive jewelry brand', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+(1, 'BRAND001', 'Premium Collection', 'Premium jewelry brand', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'BRAND002', 'Classic Collection', 'Classic jewelry brand', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'BRAND003', 'Royal Collection', 'Royal jewelry brand', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'BRAND004', 'Modern Collection', 'Modern jewelry brand', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'BRAND005', 'Heritage Collection', 'Heritage jewelry brand', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'BRAND006', 'Exclusive Collection', 'Exclusive jewelry brand', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- Insert ProductMaster data
 INSERT INTO "ProductMaster" ("tenant_id", "design_number", "product_name", "category_id", "brand_id", "net_weight", "total_metal_weight", "is_active", "created_at", "updated_at") VALUES
