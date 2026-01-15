@@ -11,6 +11,11 @@
 -- DROP DATABASE IF EXISTS jems_admin;
 
 -- Create database
+-- Note: CREATE DATABASE cannot be run inside a transaction block and PostgreSQL
+-- doesn't support IF NOT EXISTS. If the database already exists, you'll see an
+-- error message but the script will continue. This is expected and safe to ignore.
+-- Alternatively, you can create the database manually before running this script:
+--   CREATE DATABASE jems_admin;
 CREATE DATABASE jems_admin;
 
 -- Connect to the database
@@ -22,15 +27,23 @@ CREATE DATABASE jems_admin;
 -- ENUM Types
 -- ============================================
 
-CREATE TYPE "VendorType" AS ENUM ('METAL', 'ALLOY', 'DIAMOND', 'STONE', 'COMPONENT', 'MIXED');
-CREATE TYPE "VendorStatus" AS ENUM ('ACTIVE', 'INACTIVE');
+DO $$ BEGIN
+    CREATE TYPE "VendorType" AS ENUM ('METAL', 'ALLOY', 'DIAMOND', 'STONE', 'COMPONENT', 'MIXED');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+    CREATE TYPE "VendorStatus" AS ENUM ('ACTIVE', 'INACTIVE');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- ============================================
 -- TABLES CREATION
 -- ============================================
 
 -- Tenant Table
-CREATE TABLE "Tenant" (
+CREATE TABLE IF NOT EXISTS "Tenant" (
     "tenant_id" SERIAL PRIMARY KEY,
     "name" TEXT NOT NULL,
     "domain" TEXT NOT NULL UNIQUE,
@@ -40,7 +53,7 @@ CREATE TABLE "Tenant" (
 );
 
 -- Department Table
-CREATE TABLE "Department" (
+CREATE TABLE IF NOT EXISTS "Department" (
     "department_id" SERIAL PRIMARY KEY,
     "tenant_id" INTEGER NOT NULL,
     "department_code" TEXT NOT NULL UNIQUE,
@@ -55,7 +68,7 @@ CREATE TABLE "Department" (
 );
 
 -- Role Table
-CREATE TABLE "Role" (
+CREATE TABLE IF NOT EXISTS "Role" (
     "id" SERIAL PRIMARY KEY,
     "tenant_id" INTEGER NOT NULL,
     "role_code" TEXT NOT NULL UNIQUE,
@@ -70,7 +83,7 @@ CREATE TABLE "Role" (
 );
 
 -- Employee Table
-CREATE TABLE "Employee" (
+CREATE TABLE IF NOT EXISTS "Employee" (
     "employee_id" SERIAL PRIMARY KEY,
     "tenant_id" INTEGER NOT NULL,
     "employee_name" TEXT NOT NULL,
@@ -95,7 +108,7 @@ CREATE TABLE "Employee" (
 );
 
 -- Customer Table
-CREATE TABLE "Customer" (
+CREATE TABLE IF NOT EXISTS "Customer" (
     "customer_id" SERIAL PRIMARY KEY,
     "customer_code" TEXT NOT NULL UNIQUE,
     "customer_name" TEXT NOT NULL,
@@ -108,7 +121,7 @@ CREATE TABLE "Customer" (
 );
 
 -- Vendor Table
-CREATE TABLE "Vendor" (
+CREATE TABLE IF NOT EXISTS "Vendor" (
     "id" SERIAL PRIMARY KEY,
     "tenantId" INTEGER NOT NULL,
     "vendorCode" TEXT,
@@ -136,12 +149,12 @@ CREATE TABLE "Vendor" (
 -- INDEXES
 -- ============================================
 
-CREATE INDEX "Department_tenant_id_idx" ON "Department"("tenant_id");
-CREATE INDEX "Role_tenant_id_idx" ON "Role"("tenant_id");
-CREATE INDEX "Employee_tenant_id_idx" ON "Employee"("tenant_id");
-CREATE INDEX "Employee_department_id_idx" ON "Employee"("department_id");
-CREATE INDEX "Employee_role_id_idx" ON "Employee"("role_id");
-CREATE INDEX "Vendor_tenantId_idx" ON "Vendor"("tenantId");
+CREATE INDEX IF NOT EXISTS "Department_tenant_id_idx" ON "Department"("tenant_id");
+CREATE INDEX IF NOT EXISTS "Role_tenant_id_idx" ON "Role"("tenant_id");
+CREATE INDEX IF NOT EXISTS "Employee_tenant_id_idx" ON "Employee"("tenant_id");
+CREATE INDEX IF NOT EXISTS "Employee_department_id_idx" ON "Employee"("department_id");
+CREATE INDEX IF NOT EXISTS "Employee_role_id_idx" ON "Employee"("role_id");
+CREATE INDEX IF NOT EXISTS "Vendor_tenantId_idx" ON "Vendor"("tenantId");
 
 -- ============================================
 -- SAMPLE DATA INSERTION
@@ -154,7 +167,8 @@ INSERT INTO "Tenant" ("name", "domain", "plan", "is_active", "created_at") VALUE
 ('JEM Wholesale', 'jems-wholesale.local', 'premium', true, CURRENT_TIMESTAMP),
 ('JEM Export', 'jems-export.local', 'enterprise', true, CURRENT_TIMESTAMP),
 ('JEM Custom', 'jems-custom.local', 'standard', true, CURRENT_TIMESTAMP),
-('JEM Boutique', 'jems-boutique.local', 'premium', false, CURRENT_TIMESTAMP);
+('JEM Boutique', 'jems-boutique.local', 'premium', false, CURRENT_TIMESTAMP)
+ON CONFLICT ("domain") DO NOTHING;
 
 -- Insert Department data
 INSERT INTO "Department" ("tenant_id", "department_code", "department_name", "description", "department_type", "is_active", "created_at", "updated_at") VALUES
@@ -163,9 +177,10 @@ INSERT INTO "Department" ("tenant_id", "department_code", "department_name", "de
 (1, 'DEPT003', 'Design', 'Design and development department', 'DESIGN', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 (1, 'DEPT004', 'Packaging', 'Packaging and shipping department', 'LOGISTICS', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 (1, 'DEPT005', 'Inventory', 'Inventory management department', 'WAREHOUSE', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-(2, 'DEPT001', 'Sales', 'Sales department', 'SALES', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-(2, 'DEPT002', 'Customer Service', 'Customer service department', 'SUPPORT', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-(3, 'DEPT001', 'Wholesale Operations', 'Wholesale operations department', 'SALES', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+(2, 'DEPT006', 'Sales', 'Sales department', 'SALES', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 'DEPT007', 'Customer Service', 'Customer service department', 'SUPPORT', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, 'DEPT008', 'Wholesale Operations', 'Wholesale operations department', 'SALES', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT ("department_code") DO NOTHING;
 
 -- Insert Role data
 INSERT INTO "Role" ("tenant_id", "role_code", "role_name", "role_description", "is_active", "created_at", "updated_at") VALUES
@@ -175,18 +190,48 @@ INSERT INTO "Role" ("tenant_id", "role_code", "role_name", "role_description", "
 (1, 'ROLE004', 'Employee', 'Regular employee role', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 (1, 'ROLE005', 'Quality Inspector', 'Quality inspection role', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 (1, 'ROLE006', 'Designer', 'Jewelry designer role', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-(2, 'ROLE001', 'Sales Manager', 'Sales manager role', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-(2, 'ROLE002', 'Sales Executive', 'Sales executive role', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+(2, 'ROLE007', 'Sales Manager', 'Sales manager role', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 'ROLE008', 'Sales Executive', 'Sales executive role', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT ("role_code") DO NOTHING;
 
 -- Insert Employee data
--- Note: role_id now references Role.id (INTEGER) instead of role_code (TEXT)
-INSERT INTO "Employee" ("tenant_id", "employee_name", "employee_code", "department_id", "role_id", "email", "mobile_number", "date_of_joining", "address", "is_active", "created_at") VALUES
-(1, 'John Doe', 'EMP001', 1, 1, 'john.doe@jems.com', '9876543210', '2024-01-15', '123 Main Street, City', true, CURRENT_TIMESTAMP),
-(1, 'Jane Smith', 'EMP002', 2, 2, 'jane.smith@jems.com', '9876543211', '2024-02-01', '456 Oak Avenue, City', true, CURRENT_TIMESTAMP),
-(1, 'Bob Johnson', 'EMP003', 1, 3, 'bob.johnson@jems.com', '9876543212', '2024-03-10', '789 Pine Road, City', true, CURRENT_TIMESTAMP),
-(1, 'Alice Williams', 'EMP004', 3, 6, 'alice.williams@jems.com', '9876543213', '2024-04-05', '321 Elm Street, City', true, CURRENT_TIMESTAMP),
-(1, 'Charlie Brown', 'EMP005', 2, 5, 'charlie.brown@jems.com', '9876543214', '2024-05-12', '654 Maple Drive, City', true, CURRENT_TIMESTAMP),
-(1, 'Diana Prince', 'EMP006', 4, 4, 'diana.prince@jems.com', '9876543215', '2024-06-20', '987 Cedar Lane, City', true, CURRENT_TIMESTAMP);
+-- Note: Using subqueries to get department_id and role_id to avoid foreign key issues
+-- Also checking if employee already exists to avoid duplicates
+INSERT INTO "Employee" ("tenant_id", "employee_name", "employee_code", "department_id", "role_id", "email", "mobile_number", "date_of_joining", "address", "is_active", "created_at") 
+SELECT 1, 'John Doe', 'EMP001', d."department_id", r."id", 'john.doe@jems.com', '9876543210', '2024-01-15', '123 Main Street, City', true, CURRENT_TIMESTAMP
+FROM "Department" d, "Role" r
+WHERE d."department_code" = 'DEPT001' AND d."tenant_id" = 1 AND r."role_code" = 'ROLE001' AND r."tenant_id" = 1
+AND NOT EXISTS (SELECT 1 FROM "Employee" WHERE "employee_code" = 'EMP001' AND "tenant_id" = 1);
+
+INSERT INTO "Employee" ("tenant_id", "employee_name", "employee_code", "department_id", "role_id", "email", "mobile_number", "date_of_joining", "address", "is_active", "created_at")
+SELECT 1, 'Jane Smith', 'EMP002', d."department_id", r."id", 'jane.smith@jems.com', '9876543211', '2024-02-01', '456 Oak Avenue, City', true, CURRENT_TIMESTAMP
+FROM "Department" d, "Role" r
+WHERE d."department_code" = 'DEPT002' AND d."tenant_id" = 1 AND r."role_code" = 'ROLE002' AND r."tenant_id" = 1
+AND NOT EXISTS (SELECT 1 FROM "Employee" WHERE "employee_code" = 'EMP002' AND "tenant_id" = 1);
+
+INSERT INTO "Employee" ("tenant_id", "employee_name", "employee_code", "department_id", "role_id", "email", "mobile_number", "date_of_joining", "address", "is_active", "created_at")
+SELECT 1, 'Bob Johnson', 'EMP003', d."department_id", r."id", 'bob.johnson@jems.com', '9876543212', '2024-03-10', '789 Pine Road, City', true, CURRENT_TIMESTAMP
+FROM "Department" d, "Role" r
+WHERE d."department_code" = 'DEPT001' AND d."tenant_id" = 1 AND r."role_code" = 'ROLE003' AND r."tenant_id" = 1
+AND NOT EXISTS (SELECT 1 FROM "Employee" WHERE "employee_code" = 'EMP003' AND "tenant_id" = 1);
+
+INSERT INTO "Employee" ("tenant_id", "employee_name", "employee_code", "department_id", "role_id", "email", "mobile_number", "date_of_joining", "address", "is_active", "created_at")
+SELECT 1, 'Alice Williams', 'EMP004', d."department_id", r."id", 'alice.williams@jems.com', '9876543213', '2024-04-05', '321 Elm Street, City', true, CURRENT_TIMESTAMP
+FROM "Department" d, "Role" r
+WHERE d."department_code" = 'DEPT003' AND d."tenant_id" = 1 AND r."role_code" = 'ROLE006' AND r."tenant_id" = 1
+AND NOT EXISTS (SELECT 1 FROM "Employee" WHERE "employee_code" = 'EMP004' AND "tenant_id" = 1);
+
+INSERT INTO "Employee" ("tenant_id", "employee_name", "employee_code", "department_id", "role_id", "email", "mobile_number", "date_of_joining", "address", "is_active", "created_at")
+SELECT 1, 'Charlie Brown', 'EMP005', d."department_id", r."id", 'charlie.brown@jems.com', '9876543214', '2024-05-12', '654 Maple Drive, City', true, CURRENT_TIMESTAMP
+FROM "Department" d, "Role" r
+WHERE d."department_code" = 'DEPT002' AND d."tenant_id" = 1 AND r."role_code" = 'ROLE005' AND r."tenant_id" = 1
+AND NOT EXISTS (SELECT 1 FROM "Employee" WHERE "employee_code" = 'EMP005' AND "tenant_id" = 1);
+
+INSERT INTO "Employee" ("tenant_id", "employee_name", "employee_code", "department_id", "role_id", "email", "mobile_number", "date_of_joining", "address", "is_active", "created_at")
+SELECT 1, 'Diana Prince', 'EMP006', d."department_id", r."id", 'diana.prince@jems.com', '9876543215', '2024-06-20', '987 Cedar Lane, City', true, CURRENT_TIMESTAMP
+FROM "Department" d, "Role" r
+WHERE d."department_code" = 'DEPT004' AND d."tenant_id" = 1 AND r."role_code" = 'ROLE004' AND r."tenant_id" = 1
+AND NOT EXISTS (SELECT 1 FROM "Employee" WHERE "employee_code" = 'EMP006' AND "tenant_id" = 1);
 
 -- Insert Customer data
 INSERT INTO "Customer" ("customer_code", "customer_name", "mobilenumber", "email_id", "address", "status", "created_at", "updated_at") VALUES
@@ -195,7 +240,8 @@ INSERT INTO "Customer" ("customer_code", "customer_name", "mobilenumber", "email
 ('CUST003', 'Premium Gems Ltd', '9876543217', 'sales@premiumgems.com', '300 Business Avenue, City', 'inactive', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 ('CUST004', 'Royal Diamonds', '9876543218', 'info@royaldiamonds.com', '400 Royal Plaza, City', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 ('CUST005', 'Silver Sparkle', '9876543219', 'contact@silversparkle.com', '500 Silver Street, City', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-('CUST006', 'Golden Treasures', '9876543220', 'sales@goldentreasures.com', '600 Gold Avenue, City', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+('CUST006', 'Golden Treasures', '9876543220', 'sales@goldentreasures.com', '600 Gold Avenue, City', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT ("customer_code") DO NOTHING;
 
 -- Insert Vendor data
 INSERT INTO "Vendor" ("tenantId", "vendorCode", "vendorName", "vendorType", "contactPerson", "phone", "email", "gstin", "addressLine1", "city", "state", "country", "pincode", "status", "createdAt", "updatedAt") VALUES
